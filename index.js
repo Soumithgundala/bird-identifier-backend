@@ -43,7 +43,7 @@ const upload = multer({
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: "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"
+  apiKey: "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"
 });
 
 // Image classification endpoint with sound integration
@@ -78,7 +78,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
           content: [
             {
               type: "text",
-              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]",
+              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]\nLifespan: [Lifespan]\nCommonFood: [Common Food]\nCommonPredators:[Common Predators]\nscientificName: [scientific name]",
             },
             {
               type: "image_url",
@@ -93,13 +93,19 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       temperature: 0.2,
     });
 
+
     // Process OpenAI response
     const content = openaiResponse.choices[0]?.message?.content;
     if (!content) throw new Error("No classification received");
     
-    const [speciesLine, descriptionLine] = content.split("\n"); 
+    const [speciesLine, scientificLine, descriptionLine, LifespanLine, CommonFoodLine, CommonPredatorsLine] = content.split("\n");
+    const species = speciesLine.replace("Species: ", "").trim();
     const scientificName = scientificLine.replace("Scientific Name: ", "").trim().replace(/[()]/g, "");
     const description = descriptionLine.replace("Description: ", "").trim();
+    const Lifespan = LifespanLine.replace("LifespanLine: ", "").trim();
+    const CommonFood = CommonFoodLine.replace("CommonFood: ", "").trim();
+    const CommonPredators = CommonPredatorsLine.replace("CommonPredators: ", "").trim();
+
 
     // Get bird sound from Xeno-Canto
     const xenoCantoResponse = await axios.get(
@@ -112,6 +118,10 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       success: true,
       species,
       description,
+      scientificName,
+      Lifespan,
+      CommonFood,
+      CommonPredators,
       soundUrl,
     });
   } catch (error) {
