@@ -43,7 +43,7 @@ const upload = multer({
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: "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"
+  apiKey: "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"
 });
 
 // Image classification endpoint with sound integration
@@ -78,7 +78,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
           content: [
             {
               type: "text",
-              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]\nLifespan: [Lifespan]\nCommonFood: [Common Food]\nCommonPredators:[Common Predators]\nscientificName: [scientific name]",
+              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]\nLifespan: [Lifespan]\nCommonFood: [Common Food]\nCommonPredators: [Common Predators]\nScientificName: [scientific name]\nxenocantoPrompt: [Genus species without parentheses]",
             },
             {
               type: "image_url",
@@ -92,37 +92,58 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       max_tokens: 500,
       temperature: 0.2,
     });
-
-
+    
     // Process OpenAI response
     const content = openaiResponse.choices[0]?.message?.content;
     if (!content) throw new Error("No classification received");
     
-    const [speciesLine, scientificLine, descriptionLine, LifespanLine, CommonFoodLine, CommonPredatorsLine] = content.split("\n");
-    const species = speciesLine.replace("Species: ", "").trim();
-    const scientificName = scientificLine.replace("Scientific Name: ", "").trim().replace(/[()]/g, "");
-    const description = descriptionLine.replace("Description: ", "").trim();
-    const Lifespan = LifespanLine.replace("LifespanLine: ", "").trim();
-    const CommonFood = CommonFoodLine.replace("CommonFood: ", "").trim();
-    const CommonPredators = CommonPredatorsLine.replace("CommonPredators: ", "").trim();
-
-
-    // Get bird sound from Xeno-Canto
+    // Robust parsing using field mapping
+    const fields = {};
+    content.split('\n').forEach(line => {
+      const [key, ...valueParts] = line.split(':');
+      if (key && valueParts.length) {
+        fields[key.trim()] = valueParts.join(':').trim();
+      }
+    });
+    
+    // Validate required fields
+    const requiredFields = ['Species', 'Description', 'Lifespan', 'CommonFood', 'CommonPredators', 'ScientificName', 'xenocantoPrompt'];
+    const missingFields = requiredFields.filter(field => !(field in fields));
+    
+    if (missingFields.length > 0) {
+      throw new Error(`Missing fields in response: ${missingFields.join(', ')}`);
+    }
+    
+    const { 
+      Species: species,
+      Description: description,
+      Lifespan: lifespan,
+      CommonFood: commonFood,
+      CommonPredators: commonPredators,
+      ScientificName: scientificName,
+      xenoCantoPrompt: xenoCantoPrompt, 
+    } = fields;
+    
+    // Get bird sound from Xeno-Canto using scientific name
+    const xenoQuery = encodeURIComponent(`sci:"${xenoCantoPrompt}"`);
     const xenoCantoResponse = await axios.get(
-      `https://xeno-canto.org/api/2/recordings?query=${encodeURIComponent(species)}`
+      `https://xeno-canto.org/api/2/recordings?query=${xenoQuery}`
     );
-
-    const soundUrl = xenoCantoResponse.data.recordings?.[0]?.file || null;
-
+    
+    // Find the first recording with good quality
+    const recordings = xenoCantoResponse.data.recordings?.slice(0, 3) || [];
+    const soundUrls = recordings.map(r => r.file).filter(Boolean);
+    
     res.json({
       success: true,
       species,
       description,
       scientificName,
-      Lifespan,
-      CommonFood,
-      CommonPredators,
-      soundUrl,
+      lifespan,
+      commonFood,
+      commonPredators,
+      soundUrls,
+      xenoCantoPrompt,
     });
   } catch (error) {
     console.error("Error:", error);
