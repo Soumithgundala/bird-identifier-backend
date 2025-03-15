@@ -43,7 +43,7 @@ const upload = multer({
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: "ADD your API KEY HERE"
+  apiKey: "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"
 });
 
 // Image classification endpoint with sound integration
@@ -78,7 +78,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
           content: [
             {
               type: "text",
-              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]\nLifespan: [Lifespan]\nCommonFood: [Common Food]\nCommonPredators: [Common Predators]\nScientificName: [scientific name]\nxenocantoPrompt: [Genus species without parentheses]",
+              text: "Identify the bird species in this image. Provide response in format:\nSpecies: [name]\nDescription: [detailed description]\nLifespan: [Lifespan]\nCommonFood: [Common Food]\nCommonPredators: [Common Predators]\nScientificName: [scientific name]",
             },
             {
               type: "image_url",
@@ -107,7 +107,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
     });
     
     // Validate required fields
-    const requiredFields = ['Species', 'Description', 'Lifespan', 'CommonFood', 'CommonPredators', 'ScientificName', 'xenocantoPrompt'];
+    const requiredFields = ['Species', 'Description', 'Lifespan', 'CommonFood', 'CommonPredators', 'ScientificName'];
     const missingFields = requiredFields.filter(field => !(field in fields));
     
     if (missingFields.length > 0) {
@@ -121,17 +121,17 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       CommonFood: commonFood,
       CommonPredators: commonPredators,
       ScientificName: scientificName,
-      xenoCantoPrompt: xenoCantoPrompt, 
     } = fields;
     
     // Get bird sound from Xeno-Canto using scientific name
-    const xenoQuery = encodeURIComponent(`sci:"${xenoCantoPrompt}"`);
     const xenoCantoResponse = await axios.get(
-      `https://xeno-canto.org/api/2/recordings?query=${xenoQuery}`
+      `https://xeno-canto.org/api/2/recordings?query=${scientificName}`
     );
     
     // Find the first recording with good quality
+    console.log("Xeno-Canto API Response:", xenoCantoResponse.data);
     const recordings = xenoCantoResponse.data.recordings?.slice(0, 3) || [];
+    console.log("Recordings:", recordings);
     const soundUrls = recordings.map(r => r.file).filter(Boolean);
     
     res.json({
@@ -143,8 +143,8 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       commonFood,
       commonPredators,
       soundUrls,
-      xenoCantoPrompt,
     });
+    console.log("soundUrls", soundUrls);
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
