@@ -133,6 +133,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
     const recordings = xenoCantoResponse.data.recordings?.slice(0, 3) || [];
     console.log("Recordings:", recordings);
     const soundUrls = recordings.map(r => r.file).filter(Boolean);
+    const { birdImages, nestImages } = await getBirdAndNestImages(scientificName, species);
     
     res.json({
       success: true,
@@ -143,6 +144,10 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
       commonFood,
       commonPredators,
       soundUrls,
+      images: {
+        bird: birdImages,
+        nest: nestImages
+      },
     });
     console.log("soundUrls", soundUrls);
   } catch (error) {
@@ -159,7 +164,59 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
   }
 });
 
-// Start server
+// Unsplash Image Service
+const UNSPLASH_API_KEY = ""; 
+const UNSPLASH_BASE_URL = 'https://api.unsplash.com/search/photos';
+
+async function fetchImages(query, perPage) {
+  if (!UNSPLASH_API_KEY) throw new Error('Unsplash API key missing');
+  
+  try {
+    const response = await axios.get(UNSPLASH_BASE_URL, {
+      params: {
+        query: `${query} bird`, // Boost relevance with keyword
+        per_page: perPage,
+        client_id: UNSPLASH_API_KEY,
+        orientation: 'landscape' // Better for display
+      },
+    });
+
+    // Extract medium-sized images for better quality
+    const images = response.data.results.map((image) => image.urls.regular || image.urls.small);
+
+    return images.length > 0 ? images : ["https://via.placeholder.com/400"];
+  } catch (error) {
+    console.error(`Image fetch error: ${error.message}`);
+    return ["https://via.placeholder.com/400"];
+  }
+}
+
+async function getBirdAndNestImages(scientificName, commonName) {
+  try {
+    const searchQueries = {
+      bird: `${commonName} ${scientificName}`, // Combine names
+      nest: `${commonName} nest OR ${scientificName} nest` // Broad search
+    };
+
+    const [birdImages, nestImages] = await Promise.all([
+      fetchImages(searchQueries.bird, 4),
+      fetchImages(searchQueries.nest, 2),
+    ]);
+
+    // Enhanced fallback logic
+    const validNestImages = nestImages.some(img => img.includes('unsplash')) 
+      ? nestImages
+      : await fetchImages("bird nest", 2);
+
+    return {
+      birdImages,
+      nestImages: validNestImages
+    };
+  } catch (error) {
+    console.error(`Image processing error: ${error.message}`);
+    return { birdImages: [], nestImages: [] };
+  }
+}// Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
