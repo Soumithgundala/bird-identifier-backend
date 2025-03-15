@@ -43,7 +43,7 @@ const upload = multer({
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: "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"
+  apiKey: ""
 });
 
 // Image classification endpoint with sound integration
