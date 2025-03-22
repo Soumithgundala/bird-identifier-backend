@@ -129,9 +129,9 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
     );
     
     // Find the first recording with good quality
-    console.log("Xeno-Canto API Response:", xenoCantoResponse.data);
+    // console.log("Xeno-Canto API Response:", xenoCantoResponse.data);
     const recordings = xenoCantoResponse.data.recordings?.slice(0, 3) || [];
-    console.log("Recordings:", recordings);
+    // console.log("Recordings:", recordings);
     const soundUrls = recordings.map(r => r.file).filter(Boolean);
     const { birdImages, nestImages } = await getBirdAndNestImages(scientificName, species);
     
@@ -149,7 +149,7 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
         nest: nestImages
       },
     });
-    console.log("soundUrls", soundUrls);
+    // console.log("soundUrls", soundUrls);
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
@@ -168,49 +168,44 @@ app.post("/classify-bird", upload.single("image"), async (req, res) => {
 const UNSPLASH_API_KEY = ""; 
 const UNSPLASH_BASE_URL = 'https://api.unsplash.com/search/photos';
 
+// Modify the fetchImages function to use more specific queries
 async function fetchImages(query, perPage) {
   if (!UNSPLASH_API_KEY) throw new Error('Unsplash API key missing');
   
   try {
     const response = await axios.get(UNSPLASH_BASE_URL, {
       params: {
-        query: `${query} bird`, // Boost relevance with keyword
+        query: `${query}`, // Removed redundant "bird" keyword
         per_page: perPage,
         client_id: UNSPLASH_API_KEY,
-        orientation: 'landscape' // Better for display
+        orientation: 'landscape'
       },
     });
 
-    // Extract medium-sized images for better quality
-    const images = response.data.results.map((image) => image.urls.regular || image.urls.small);
-
-    return images.length > 0 ? images : ["https://via.placeholder.com/400"];
+    return response.data.results.map((image) => image.urls.regular) || [];
   } catch (error) {
     console.error(`Image fetch error: ${error.message}`);
-    return ["https://via.placeholder.com/400"];
+    return [];
   }
 }
 
-async function getBirdAndNestImages(scientificName, commonName) {
+// Update getBirdAndNestImages to use both scientific and common names
+async function getBirdAndNestImages(scientificName) {
   try {
     const searchQueries = {
-      bird: `${commonName} ${scientificName}`, // Combine names
-      nest: `${commonName} nest OR ${scientificName} nest` // Broad search
+      bird: ` ${scientificName}`, // Combine common and scientific names
+      nest: `$ nest ${scientificName}`
     };
 
     const [birdImages, nestImages] = await Promise.all([
-      fetchImages(searchQueries.bird, 4),
-      fetchImages(searchQueries.nest, 2),
+      fetchImages(searchQueries.bird, 10),
+      fetchImages(searchQueries.nest, 5),
     ]);
 
-    // Enhanced fallback logic
-    const validNestImages = nestImages.some(img => img.includes('unsplash')) 
-      ? nestImages
-      : await fetchImages("bird nest", 2);
-
+    // Fallback logic
     return {
-      birdImages,
-      nestImages: validNestImages
+      birdImages: birdImages.length > 0 ? birdImages : ['placeholder-bird.jpg'],
+      nestImages: nestImages.length > 0 ? nestImages : ['placeholder-nest.jpg']
     };
   } catch (error) {
     console.error(`Image processing error: ${error.message}`);
