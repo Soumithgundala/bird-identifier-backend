@@ -193,13 +193,13 @@ async function fetchImages(query, perPage) {
 async function getBirdAndNestImages(scientificName) {
   try {
     const searchQueries = {
-      bird: ` ${scientificName}`, // Combine common and scientific names
-      nest: `$ nest ${scientificName}`
+      bird: ` ${scientificName}`,
+      nest: `$nest ${scientificName} `
     };
 
     const [birdImages, nestImages] = await Promise.all([
-      fetchImages(searchQueries.bird, 10),
-      fetchImages(searchQueries.nest, 5),
+      fetchImages(searchQueries.bird, 8),
+      fetchImages(searchQueries.nest, 4),
     ]);
 
     // Fallback logic
@@ -211,7 +211,98 @@ async function getBirdAndNestImages(scientificName) {
     console.error(`Image processing error: ${error.message}`);
     return { birdImages: [], nestImages: [] };
   }
-}// Start server
+}
+ // Function to fetch taxonomy and return the species code for a given name
+ async function getSpeciesCode(speciesName) {
+  try {
+    const taxonomyResponse = await axios.get(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird",
+      { 
+        headers: { "X-eBirdApiToken": "" },
+        responseType: 'text' // Ensure we get CSV text
+      }
+    );
+    
+    const csvData = taxonomyResponse.data;
+    // Split CSV into lines and remove empty lines
+    const lines = csvData.split('\n').filter(line => line.trim().length > 0);
+    
+    // If the first line does not contain a comma, assume it's a header or extraneous line and skip it
+    let startIndex = 0;
+    if (!lines[0].includes(',')) {
+      startIndex = 1;
+    }
+    
+    // Parse the remaining lines into an array of objects.
+    // Here we assume:
+    // Column 0: Scientific Name, Column 1: Common Name, Column 2: Species Code
+    const taxonomyArray = lines.slice(startIndex).map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      return {
+        sciName: parts[0],
+        comName: parts[1],
+        speciesCode: parts[2]
+      };
+    });
+    
+    console.log("Parsed Taxonomy Array:", taxonomyArray);
+    
+    // Search for the entry where either common or scientific name matches the input (case-insensitive)
+    const speciesEntry = taxonomyArray.find(entry =>
+      entry.comName.toLowerCase() === speciesName.toLowerCase() ||
+      entry.sciName.toLowerCase() === speciesName.toLowerCase()
+    );
+    
+    return speciesEntry ? speciesEntry.speciesCode : null;
+  } catch (error) {
+    console.error("Error fetching taxonomy:", error);
+    return null;
+  }
+}
+
+app.get("/bird-locations", async (req, res) => {
+  const { species, lat, lng, dist } = req.query;
+  if (!species || !lat || !lng || !dist) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing required query parameters: species, lat, lng, dist",
+    });
+  }
+  try {
+    // Get the species code dynamically from the CSV taxonomy data
+    const speciesCode = await getSpeciesCode(species);
+    if (!speciesCode) {
+      return res.status(400).json({
+        success: false,
+        error: `No species code found for species: ${species}`,
+      });
+    }
+
+    const response = await axios.get(
+      `https://api.ebird.org/v2/data/obs/geo/recent/${speciesCode}`,
+      {
+        params: { lat, lng, dist },
+        headers: { "X-eBirdApiToken": "" },
+      }
+    );
+
+    const observations = response.data.map(obs => ({
+      comName: obs.comName,
+      locName: obs.locName,
+      obsDt: obs.obsDt,
+      lat: obs.lat,
+      lng: obs.lng
+    }));
+
+    res.json({ success: true, observations });
+  } catch (error) {
+    console.error("Error fetching bird locations:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
