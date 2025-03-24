@@ -12,10 +12,8 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const port = process.env.PORT || 10000;
+
 // Configure CORS middleware
 app.use(
   cors({
@@ -304,7 +302,7 @@ app.get("/bird-locations", async (req, res) => {
 });
 
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
+
