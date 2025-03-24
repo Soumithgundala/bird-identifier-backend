@@ -19,9 +19,9 @@ const PORT = process.env.PORT || 10000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.get('/', (_req, res) => {
-  res.send("Welcome to the Bird Identifier API!");
-});
+// app.get('/', (_req, res) => {
+//   res.send("Welcome to the Bird Identifier API!");
+// });
 
 
 
