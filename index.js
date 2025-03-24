@@ -14,6 +14,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+app.get('/', (_req, res) => {
+  res.send("Welcome to the Bird Identifier API!");
+});
+
+
+
 // Configure CORS middleware
 app.use(
   cors({
