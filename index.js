@@ -6,6 +6,7 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 import cors from "cors";
 import axios from "axios";
+import { fileURLToPath } from 'url';
 
 // Load environment variables
 dotenv.config();
@@ -13,6 +14,10 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 10000;
+
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.get('/', (_req, res) => {
   res.send("Welcome to the Bird Identifier API!");
@@ -307,6 +312,13 @@ app.get("/bird-locations", async (req, res) => {
   }
 });
 
+// Serve the React app's static files from the build folder
+app.use(express.static(path.join(__dirname, "build")));
+
+// For any other request, send back index.html so that React can handle routing
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
