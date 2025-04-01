@@ -12,15 +12,24 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "axios": "^1.8.1",
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "csvtojson": "^2.0.10",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "form-data": "^4.0.2",
     "fs": "^0.0.1-security",
+    "leaflet": "^1.9.4",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.9",
     "openai": "^4.86.1",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0"
   }
 }
