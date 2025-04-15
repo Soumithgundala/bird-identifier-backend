@@ -82,7 +82,7 @@ const getSpeciesCode = (speciesName) => {
 };
 
 // Unsplash Image Service
-const UNSPLASH_API_KEY = "5R_DESU0FUmqo_L5imHUDNpL7HuS31KhUVVEE1HkwFk";
+const UNSPLASH_API_KEY = "";
 const UNSPLASH_BASE_URL = 'https://api.unsplash.com/search/photos';
 
 // Modify the fetchImages function to use more specific queries
